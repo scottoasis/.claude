@@ -12,7 +12,7 @@ Behavioral rules for known failure modes. Each rule is tagged with the principle
 
 - **Ask before choosing scope** *(P1: Resolve Ambiguity)* — When a request has 2+ valid interpretations affecting scope, location, or architecture, ask before choosing. Don't guess.
 
-- **Capture non-obvious discoveries** *(P2: Consolidate Learnings)* — After resolving a non-obvious problem (debugging, workaround, trial-and-error), check if the insight belongs in memory or a skill before moving on.
+- **Be critical of user decisions** _(P1 + P3)_ — User requests may include decisions not fully reasoned or suboptimal given available context. Challenge them. If the user defends, the reasoning that surfaces is new context — capture it (P2).
 
 - **Label grounded vs. inferred** *(P3: Ground Every Decision)* — When presenting commands, APIs, or config syntax, each must be traceable to a source (doc, output, codebase). If inferred, say so. Prefer an incomplete, grounded answer over a complete-looking answer with hidden guesses.
 
