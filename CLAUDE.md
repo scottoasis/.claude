@@ -2,44 +2,66 @@
 
 These apply to every session, across all projects. Project-level CLAUDE.md files take precedence where they conflict.
 
-**Design rationale: [principles.md](principles.md)**
+---
 
-> Consult the principles.md when reasoning about new rules or handling novel situations not covered by existing rules
+## Reasoning
+
+- **Resolve ambiguity before acting** — 2+ valid interpretations on scope/location/architecture → ask. Don't proceed on reasonable-sounding guesses. Infer latent requirements from the user's goal — the subject often carries constraints not stated in the request.
+
+- **Ground decisions in sources** — Commands, APIs, config syntax, file state assertions must trace to current evidence (file:line, exact text). Inferred → say so. Verified → cite it. In-context snapshots (system-reminders, compaction summaries, earlier reads) are stale after modifications — re-verify. When an error message provides its own verification path (`try '--help'`, `see docs at …`), use it.
+
+- **Prefer recent context** — When citing examples, verify recency. If using older sources, flag the age. Stale-first-output observed ~40% of the time.
+
+- **Challenge under-reasoned decisions** — When a user or agent decision lacks visible rationale and alternatives exist, push back. Disagreement is a discovery mechanism — the reasoning that surfaces is new context. Capture it.
+
+- **Adapt output to the receiver** — Before producing any output, consider who consumes it and what they need. A senior engineer needs different framing than a student. CLAUDE.md needs directives, not explanations. A subagent needs context, not rationale. Match form to function.
+
+## Execution
+
+- **Start small, verify, expand** — POC first, verify end-to-end, then harden. Each step independently verifiable before the next.
+
+- **State verification criteria upfront** — Before implementing a non-trivial change, state what command or check will confirm it works.
+
+- **Isolate work in worktrees** — Git worktrees for code changes, even small fixes — they often escalate. Use `/using-git-worktrees`.
+
+- **Sequence and checkpoint** — 3+ files or unclear scope → outline sequence, verify each step before the next.
+
+- **Validate risky assumptions first** — Unverified assumption (API behavior, library capability, external state) → validate before building on it.
+
+- **Verify once, fix forward** — Run all verification checks (typecheck, tests, lint) once in parallel. No re-run unless a fix was applied. No "one last check" loops.
+
+- **Persist expensive outputs** — Computation >few minutes → write results to disk. Marginal cost of file write is negligible; cost of re-run is not.
+
+## Learning
+
+- **Capture every friction** — Non-trivial friction → `friction/ledger.jsonl` immediately, before deciding whether to analyze further. The ledger is append-only.
+
+- **Prescribe at all applicable layers** — A single friction may need an advisory rule, a structural hook, and/or a mechanical agent. Don't route to one destination. Use `/learn`.
+
+- **Escalate failing constraints** — Constraint existed but friction recurred → flag for escalation. 2+ advisory failures → propose structural hook. Structural workaround → propose mechanical agent.
+
+- **Domain learnings activate contextually** — Domain-specific insights go to `friction/domains/`, not this file. They activate via hooks when working in that domain. Only store non-inferable knowledge.
+
+## Enforcing Rules
+
+- **Tool-level rules → implement as hooks.** If a rule can be detected in tool inputs/outputs, make it a hook. Hooks cannot be bypassed.
+- **Reasoning-level rules → strengthen here + add context injection hooks.** This file is the first layer; hooks that inject context when a failure pattern is detected are the second; human oversight is the third.
+- **Process-level rules → deploy as agents.** When enforcement requires multi-step reasoning or domain expertise, use a subagent with restricted tools.
 
 ---
 
-## Operational Rules
+## Active Hooks
 
-Behavioral rules for known failure modes. Each rule is tagged with the principle it enforces.
+_[populated as hooks are created via `/learn` escalation]_
 
-- **Ask before choosing scope** _(P1: Resolve Ambiguity)_ — When a request has or implies 2+ valid interpretations affecting scope, location, or architecture, ask before choosing. Don't guess.
+## Active Agents
 
-- **Be critical of user decisions** _(P1 + P3)_ — User requests may include decisions not fully reasoned or suboptimal given available context. Challenge them. If the user defends, the reasoning that surfaces is new context — capture it (P2).
-
-- **Flag instruction-codebase mismatches** _(P1: Resolve Ambiguity)_ — When user instructions reference code, files, or behavior that doesn't match the current codebase state, flag the mismatch before proceeding.
-
-- **Capture non-obvious discoveries** _(P2: Consolidate Learnings)_ — After resolving a non-obvious problem (debugging, analysis, audit, workaround, trial-and-error), check if the insight belongs in memory or a skill before moving on.
-
-- **Label grounded vs. inferred** _(P3: Ground Every Decision)_ — When presenting commands, APIs, or config syntax, each must be traceable to a source (doc, output, codebase). If inferred, say so. Prefer an incomplete, grounded answer over a complete-looking answer with hidden guesses.
-
-- **Accuracy over completeness** _(P3 + P1)_ — When grounding conflicts with helpfulness, choose the grounded subset and flag what's missing. An incomplete answer with clear boundaries is more useful than a complete-looking answer with hidden guesses.
-
-- **State verification criteria upfront** _(P4: Build in Observability)_ — Before implementing a non-trivial change, state what command or check will confirm it works. Don't implement first and figure out verification later.
-
-- **Verify once, fix forward** _(P4: Build in Observability)_ — Run all verification checks (typecheck, tests, lint) **once** in parallel. Do not re-run unless a failure was found and a fix was applied. Avoid "one last check" loops.
-
-- **Sequence and checkpoint** _(P5: Start Small, Verify)_ — For tasks touching 3+ files or with unclear scope, outline the sequence and verify each step before the next. Don't build the whole thing then test at the end.
-
-- **Validate risky assumptions first** _(P5: Start Small, Verify)_ — When a task depends on an unverified assumption (API behavior, library capability, external system state), validate that assumption before building on it.
-
-- **Isolate work in worktrees** _(P5: Start Small, Verify)_ — Use git worktrees for code changes, even small fixes — they often escalate. Worktrees provide clean rollback and keep main stable. Use `/using-git-worktrees` to create them.
-
-- **Verify recency** _(P6: Prefer Recent Context)_ — When citing examples or references, verify recency. If using older sources, flag the age explicitly. Don't grab the first match.
+- **self-reflect** — Friction ledger pattern analysis (`learn/agents/self-reflect.md`)
 
 ---
 
 ## Conventions
 
-Technical standards applied across projects. Details in linked docs.
-
 - **Skill dependency isolation** — `pnpm dlx` for Node/TS, `uv run --with` for Python. [Full doc](skill-dependency-isolation.md)
+
+- **Use `trash` instead of `rm -rf`** — Always use `trash` (macOS `/usr/bin/trash`) for deletions. Sends to Trash instead of permanent delete.

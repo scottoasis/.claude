@@ -2,7 +2,6 @@
 
 !**/.gitignore
 !/CLAUDE.md
-!/principles.md
 !/skills/
 !/skills/**
 !/skill-dependency-isolation.md
