@@ -37,27 +37,30 @@ A single friction may need constraints at multiple layers. Always evaluate all t
 
 **This step runs ALWAYS — before deciding whether to analyze further.**
 
-Append a structured entry to `~/.claude/friction/ledger.jsonl`:
+Insert a structured entry into `~/.claude/friction/friction.db`:
 
-```jsonl
-{
-  "id": "f-YYYYMMDD-NNN",
-  "date": "YYYY-MM-DD",
-  "project": "/path/to/project",
-  "domain": ["tag1", "tag2"],
-  "type": "<type>",
-  "description": "What happened",
-  "root_cause": "First-order why",
-  "deep_cause": null,
-  "resolution": "What fixed it",
-  "effort": "high|medium|low",
-  "constraint_existed": null,
-  "constraint_failed": false,
-  "recurrence_of": null,
-  "prescribed": {"advisory": null, "structural": null, "mechanical": null},
-  "implemented": {"advisory": null, "structural": null, "mechanical": null},
-  "status": "captured"
-}
+```bash
+# Generate next ID for today
+LAST_ID=$(sqlite3 ~/.claude/friction/friction.db \
+  "SELECT id FROM friction WHERE date = '$(date +%Y-%m-%d)' ORDER BY id DESC LIMIT 1;")
+# Increment NNN or start at 001
+
+sqlite3 ~/.claude/friction/friction.db "
+INSERT INTO friction (
+  id, date, project, type, description,
+  root_cause, deep_cause, resolution, effort,
+  constraint_existed, constraint_failed, recurrence_of,
+  status
+) VALUES (
+  'f-YYYYMMDD-NNN', 'YYYY-MM-DD', '/path/to/project', '<type>',
+  'What happened',
+  'First-order why', NULL, 'What fixed it', 'high|medium|low',
+  NULL, 0, NULL,
+  'captured'
+);
+INSERT INTO friction_domain (friction_id, domain) VALUES ('f-YYYYMMDD-NNN', 'tag1');
+INSERT INTO friction_domain (friction_id, domain) VALUES ('f-YYYYMMDD-NNN', 'tag2');
+"
 ```
 
 **Friction types:**
@@ -70,7 +73,7 @@ Append a structured entry to `~/.claude/friction/ledger.jsonl`:
 
 **Domain tags:** Use concrete, specific tags. `meta-api` not `api`. `typescript-strict` not `typescript`. Tags are the primary key for pattern recognition across sessions.
 
-**Generate ID:** `f-YYYYMMDD-NNN` where NNN is a sequential counter for that day. Check the ledger for the last ID on today's date.
+**Generate ID:** `f-YYYYMMDD-NNN` where NNN is a sequential counter for that day. Query: `sqlite3 ~/.claude/friction/friction.db "SELECT id FROM friction WHERE date = '$(date +%Y-%m-%d)' ORDER BY id DESC LIMIT 1;"`
 
 **If friction occurred despite an existing constraint:** Set `constraint_existed` to the rule/hook/agent name and `constraint_failed` to `true`. This is the escalation signal.
 
@@ -100,7 +103,7 @@ Apply "5 Whys" starting from the first-order root cause:
 
 ### Step 3: Pattern Check
 
-Query the friction ledger for related entries:
+Query `friction.db` for related entries:
 
 ```bash
 # Same domain, similar causes
@@ -111,6 +114,12 @@ Query the friction ledger for related entries:
 
 # Full-text search for similar root causes
 ~/.claude/friction/scripts/query.sh search "<root cause keywords>"
+
+# Trend analysis — is this domain getting better or worse?
+~/.claude/friction/scripts/query.sh trend <tag> --window 12
+
+# Recurring patterns with no constraint yet
+~/.claude/friction/scripts/query.sh unconstrained --min 2
 ```
 
 **What to look for:**
@@ -220,10 +229,22 @@ Present the full prescription (Step 4) and any escalation proposals (Step 5) to 
 
 ### Step 7: Update Ledger
 
-Update the friction entry with:
-- `prescribed`: What was recommended at each layer
-- `implemented`: File paths of what was actually created
-- `status`: `implemented`
+Update the friction entry in `friction.db`:
+
+```bash
+sqlite3 ~/.claude/friction/friction.db "
+  UPDATE friction SET
+    prescribed_advisory = '...',
+    prescribed_structural = '...',
+    prescribed_mechanical = '...',
+    implemented_advisory = '...',
+    implemented_structural = '...',
+    implemented_mechanical = '...',
+    status = 'implemented',
+    updated_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now')
+  WHERE id = 'f-YYYYMMDD-NNN';
+"
+```
 
 If the user's analysis (delta) went deeper than yours, also:
 1. Record a SECOND friction entry with `type: harness-gap` — the learning system itself failed

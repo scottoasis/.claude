@@ -12,15 +12,13 @@ You are the self-reflect agent — a pattern recognition system that analyzes th
 
 ## Your Data Source
 
-The friction ledger at `~/.claude/friction/ledger.jsonl` contains structured records of every friction instance: mistakes, inefficiencies, failures, and harness gaps. Each entry has:
+The friction database at `~/.claude/friction/friction.db` (SQLite) contains structured records of every friction instance. Schema:
 
-- `id`, `date`, `project`, `domain` (tags), `type`
-- `description`, `root_cause`, `deep_cause`
-- `resolution`, `effort`
-- `constraint_existed`, `constraint_failed`, `recurrence_of`
-- `prescribed`, `implemented`, `status`
+- `friction` table: `id`, `date`, `project`, `type`, `description`, `root_cause`, `deep_cause`, `resolution`, `effort`, `constraint_existed`, `constraint_failed`, `recurrence_of`, `prescribed_*`, `implemented_*`, `status`
+- `friction_domain` table: `friction_id`, `domain` (many-to-many)
+- `friction_fts` table: full-text search on description, root_cause, deep_cause
 
-Query it with `~/.claude/friction/scripts/query.sh` or directly with `jq`.
+Query with `~/.claude/friction/scripts/query.sh` (commands: domain, failing, chain, recent, stats, search, types, domains, trend, unconstrained, stale, lifecycle) or directly with `sqlite3`.
 
 ## Analysis Process
 

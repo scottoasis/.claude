@@ -39,6 +39,18 @@ Run ledger queries to understand the current landscape:
 
 # Top domains
 ~/.claude/friction/scripts/query.sh domains
+
+# Pipeline bottlenecks — entries stuck at early status
+~/.claude/friction/scripts/query.sh lifecycle
+
+# Trend by domain — is friction increasing or decreasing?
+~/.claude/friction/scripts/query.sh trend <domain> --window 12
+
+# Stale constraints — no friction in 60+ days
+~/.claude/friction/scripts/query.sh stale --days 60
+
+# Recurring patterns with no constraint
+~/.claude/friction/scripts/query.sh unconstrained
 ```
 
 **Summarize:**
@@ -119,7 +131,7 @@ done
 **Prescription gaps** (friction was captured but never prescribed/implemented):
 ```bash
 # Entries stuck at 'captured' or 'analyzed' status
-jq -c 'select(.status == "captured" or .status == "analyzed")' ~/.claude/friction/ledger.jsonl 2>/dev/null | wc -l
+~/.claude/friction/scripts/query.sh lifecycle
 ```
 - **Action:** These represent `/learn` runs that were interrupted or where implementation was deferred. Triage: implement or close.
 
