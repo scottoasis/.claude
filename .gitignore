@@ -5,3 +5,16 @@
 !/skills/
 !/skills/**
 !/skill-dependency-isolation.md
+!/friction/
+!/friction/scripts/
+!/friction/scripts/**
+!/friction/domains/
+!/friction/domains/**
+!/friction/domain-map.json
+# Exclude runtime data (DB, logs, archives)
+/friction/friction.db
+/friction/friction.db-*
+/friction/ledger.jsonl*
+/friction/hook-activations.jsonl
+!/memory/
+!/memory/**
