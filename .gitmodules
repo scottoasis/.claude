@@ -1,0 +1,3 @@
+[submodule "/Users/scott/.claude/skills/web-access"]
+	path = /Users/scott/.claude/skills/web-access
+	url = https://github.com/eze-is/web-access.git
