@@ -37,30 +37,14 @@ A single friction may need constraints at multiple layers. Always evaluate all t
 
 **This step runs ALWAYS — before deciding whether to analyze further.**
 
-Insert a structured entry into `~/.claude/friction/friction.db`:
+Append a JSON line to `~/.claude/friction/friction.jsonl`:
 
 ```bash
 # Generate next ID for today
-LAST_ID=$(sqlite3 ~/.claude/friction/friction.db \
-  "SELECT id FROM friction WHERE date = '$(date +%Y-%m-%d)' ORDER BY id DESC LIMIT 1;")
+LAST_ID=$(jq -r 'select(.date == "'$(date +%Y-%m-%d)'") | .id' ~/.claude/friction/friction.jsonl | sort | tail -1)
 # Increment NNN or start at 001
 
-sqlite3 ~/.claude/friction/friction.db "
-INSERT INTO friction (
-  id, date, project, type, description,
-  root_cause, deep_cause, resolution, effort,
-  constraint_existed, constraint_failed, recurrence_of,
-  status
-) VALUES (
-  'f-YYYYMMDD-NNN', 'YYYY-MM-DD', '/path/to/project', '<type>',
-  'What happened',
-  'First-order why', NULL, 'What fixed it', 'high|medium|low',
-  NULL, 0, NULL,
-  'captured'
-);
-INSERT INTO friction_domain (friction_id, domain) VALUES ('f-YYYYMMDD-NNN', 'tag1');
-INSERT INTO friction_domain (friction_id, domain) VALUES ('f-YYYYMMDD-NNN', 'tag2');
-"
+echo '{"id":"f-YYYYMMDD-NNN","date":"YYYY-MM-DD","project":"/path/to/project","type":"<type>","description":"What happened","root_cause":"First-order why","deep_cause":null,"resolution":"What fixed it","effort":"high|medium|low","constraint_existed":null,"constraint_failed":0,"recurrence_of":null,"prescribed_advisory":null,"prescribed_structural":null,"prescribed_mechanical":null,"implemented_advisory":null,"implemented_structural":null,"implemented_mechanical":null,"status":"captured","created_at":"'$(date -u +%Y-%m-%dT%H:%M:%SZ)'","updated_at":"'$(date -u +%Y-%m-%dT%H:%M:%SZ)'","domains":["tag1","tag2"]}' >> ~/.claude/friction/friction.jsonl
 ```
 
 **Friction types:**
@@ -73,7 +57,7 @@ INSERT INTO friction_domain (friction_id, domain) VALUES ('f-YYYYMMDD-NNN', 'tag
 
 **Domain tags:** Use concrete, specific tags. `meta-api` not `api`. `typescript-strict` not `typescript`. Tags are the primary key for pattern recognition across sessions.
 
-**Generate ID:** `f-YYYYMMDD-NNN` where NNN is a sequential counter for that day. Query: `sqlite3 ~/.claude/friction/friction.db "SELECT id FROM friction WHERE date = '$(date +%Y-%m-%d)' ORDER BY id DESC LIMIT 1;"`
+**Generate ID:** `f-YYYYMMDD-NNN` where NNN is a sequential counter for that day. Query: `jq -r 'select(.date == "'$(date +%Y-%m-%d)'") | .id' ~/.claude/friction/friction.jsonl | sort | tail -1`
 
 **If friction occurred despite an existing constraint:** Set `constraint_existed` to the rule/hook/agent name and `constraint_failed` to `true`. This is the escalation signal.
 
@@ -103,7 +87,7 @@ Apply "5 Whys" starting from the first-order root cause:
 
 ### Step 3: Pattern Check
 
-Query `friction.db` for related entries:
+Query the friction ledger for related entries:
 
 ```bash
 # Same domain, similar causes
@@ -229,21 +213,20 @@ Present the full prescription (Step 4) and any escalation proposals (Step 5) to 
 
 ### Step 7: Update Ledger
 
-Update the friction entry in `friction.db`:
+Update the friction entry in `friction.jsonl`. Use jq to rewrite the matching line in-place:
 
 ```bash
-sqlite3 ~/.claude/friction/friction.db "
-  UPDATE friction SET
-    prescribed_advisory = '...',
-    prescribed_structural = '...',
-    prescribed_mechanical = '...',
-    implemented_advisory = '...',
-    implemented_structural = '...',
-    implemented_mechanical = '...',
-    status = 'implemented',
-    updated_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now')
-  WHERE id = 'f-YYYYMMDD-NNN';
-"
+jq -c 'if .id == "f-YYYYMMDD-NNN" then . + {
+  "prescribed_advisory": "...",
+  "prescribed_structural": "...",
+  "prescribed_mechanical": "...",
+  "implemented_advisory": "...",
+  "implemented_structural": "...",
+  "implemented_mechanical": "...",
+  "status": "implemented",
+  "updated_at": "'$(date -u +%Y-%m-%dT%H:%M:%SZ)'"
+} else . end' ~/.claude/friction/friction.jsonl > /tmp/friction_updated.jsonl \
+  && mv /tmp/friction_updated.jsonl ~/.claude/friction/friction.jsonl
 ```
 
 If the user's analysis (delta) went deeper than yours, also:

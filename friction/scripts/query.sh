@@ -1,18 +1,17 @@
 #!/usr/bin/env bash
-# Friction ledger query tool — wraps sqlite3 for common queries
+# Friction ledger query tool — wraps jq for common queries
 # Usage: query.sh <command> [args]
 
 set -euo pipefail
 
-DB="${HOME}/.claude/friction/friction.db"
+LEDGER="${HOME}/.claude/friction/friction.jsonl"
 
-if [ ! -f "$DB" ]; then
-  echo "No database found at $DB" >&2
+if [ ! -f "$LEDGER" ]; then
+  echo "No ledger found at $LEDGER" >&2
   exit 1
 fi
 
-sql_json() { sqlite3 -json "$DB" "$1"; }
-sql_raw() { sqlite3 "$DB" "$1"; }
+jq_query() { jq -s "$1" "$LEDGER"; }
 
 usage() {
   cat <<'EOF'
@@ -24,7 +23,7 @@ Commands:
   chain <friction-id>         Follow full recurrence chain from a friction ID
   recent [--last N]           Most recent N entries (default: 10)
   stats                       Summary statistics
-  search <pattern>            Full-text search across descriptions and causes
+  search <pattern>            Regex search across descriptions and causes
   types                       Count by friction type
   domains                     Count by domain tag
   trend <tag> [--window N]    Friction count per week for domain (default: 12 weeks)
@@ -42,6 +41,14 @@ Examples:
 EOF
 }
 
+# Portable date arithmetic (macOS + Linux)
+date_ago_days() {
+  date -v-"${1}"d +%Y-%m-%d 2>/dev/null || date -d "-${1} days" +%Y-%m-%d
+}
+date_ago_weeks() {
+  date -v-"${1}"w +%Y-%m-%d 2>/dev/null || date -d "-${1} weeks" +%Y-%m-%d
+}
+
 cmd_domain() {
   local tag="${1:?Usage: query.sh domain <tag> [--last N]}"
   shift
@@ -52,13 +59,11 @@ cmd_domain() {
       *) shift ;;
     esac
   done
-  sql_json "
-    SELECT f.*
-    FROM friction f
-    JOIN friction_domain fd ON f.id = fd.friction_id
-    WHERE fd.domain = '${tag}'
-      AND f.date >= date('now', '-${days} days')
-    ORDER BY f.date DESC;
+  local cutoff
+  cutoff=$(date_ago_days "$days")
+  jq_query "
+    [.[] | select((.domains // [])[] == \"$tag\" and .date >= \"$cutoff\")]
+    | sort_by(.date) | reverse
   "
 }
 
@@ -70,45 +75,34 @@ cmd_failing() {
       *) shift ;;
     esac
   done
-  sql_json "
-    SELECT constraint_existed AS constraint_name,
-           COUNT(*) AS failure_count,
-           GROUP_CONCAT(id, ', ') AS friction_ids
-    FROM friction
-    WHERE constraint_failed = 1
-      AND constraint_existed IS NOT NULL
-    GROUP BY constraint_existed
-    HAVING COUNT(*) >= ${min}
-    ORDER BY failure_count DESC;
+  jq_query "
+    [.[] | select(.constraint_failed == 1 and .constraint_existed != null)]
+    | group_by(.constraint_existed)
+    | map({
+        constraint_name: .[0].constraint_existed,
+        failure_count: length,
+        friction_ids: [.[].id] | join(\", \")
+      })
+    | [.[] | select(.failure_count >= $min)]
+    | sort_by(.failure_count) | reverse
   "
 }
 
 cmd_chain() {
   local id="${1:?Usage: query.sh chain <friction-id>}"
-  sql_json "
-    WITH RECURSIVE
-      -- Walk UP to find the root
-      ancestors AS (
-        SELECT * FROM friction WHERE id = '${id}'
-        UNION ALL
-        SELECT f.* FROM friction f
-        JOIN ancestors a ON f.id = a.recurrence_of
-      ),
-      -- Find the root ID (the one with no recurrence_of or whose recurrence_of isn't in the chain)
-      root AS (
-        SELECT id FROM ancestors WHERE recurrence_of IS NULL
-        UNION
-        SELECT a.id FROM ancestors a WHERE a.recurrence_of NOT IN (SELECT id FROM ancestors)
-        LIMIT 1
-      ),
-      -- Walk DOWN from root
-      descendants AS (
-        SELECT * FROM friction WHERE id IN (SELECT id FROM root)
-        UNION ALL
-        SELECT f.* FROM friction f
-        JOIN descendants d ON f.recurrence_of = d.id
-      )
-    SELECT DISTINCT * FROM descendants ORDER BY date;
+  jq_query "
+    . as \$all |
+    (\$all | map({(.id): .}) | add) as \$byid |
+    (\"$id\" | until(
+      . as \$cur | (\$byid[\$cur].recurrence_of == null);
+      \$byid[.].recurrence_of
+    )) as \$root |
+    [
+      def descendants(\$rid):
+        (\$all[] | select(.id == \$rid)),
+        (\$all[] | select(.recurrence_of == \$rid) | descendants(.id));
+      descendants(\$root)
+    ] | unique_by(.id) | sort_by(.date)
   "
 }
 
@@ -120,51 +114,47 @@ cmd_recent() {
       *) shift ;;
     esac
   done
-  sql_json "SELECT * FROM friction ORDER BY date DESC, id DESC LIMIT ${count};"
+  jq_query "sort_by(.date, .id) | reverse | .[:$count]"
 }
 
 cmd_stats() {
-  sql_json "
-    SELECT
-      (SELECT COUNT(*) FROM friction) AS total,
-      (SELECT COUNT(*) FROM friction WHERE constraint_failed = 1) AS constraint_failures,
-      (SELECT COUNT(*) FROM friction
-       WHERE prescribed_advisory IS NOT NULL
-          OR prescribed_structural IS NOT NULL
-          OR prescribed_mechanical IS NOT NULL) AS with_prescriptions;
-  "
-  echo "---"
-  sql_json "SELECT status, COUNT(*) AS count FROM friction GROUP BY status;"
-  echo "---"
-  sql_json "SELECT type, COUNT(*) AS count FROM friction GROUP BY type ORDER BY count DESC;"
-  echo "---"
-  sql_json "
-    SELECT fd.domain, COUNT(*) AS count
-    FROM friction_domain fd
-    GROUP BY fd.domain ORDER BY count DESC;
-  "
+  jq_query '
+    {
+      total: length,
+      constraint_failures: [.[] | select(.constraint_failed == 1)] | length,
+      with_prescriptions: [.[] | select(
+        .prescribed_advisory != null or
+        .prescribed_structural != null or
+        .prescribed_mechanical != null
+      )] | length,
+      by_status: (group_by(.status) | map({status: .[0].status, count: length})),
+      by_type: (group_by(.type) | map({type: .[0].type, count: length}) | sort_by(.count) | reverse),
+      by_domain: ([.[].domains[]] | group_by(.) | map({domain: .[0], count: length}) | sort_by(.count) | reverse)
+    }
+  '
 }
 
 cmd_search() {
   local pattern="${1:?Usage: query.sh search <pattern>}"
-  sql_json "
-    SELECT f.*
-    FROM friction f
-    JOIN friction_fts fts ON f.rowid = fts.rowid
-    WHERE friction_fts MATCH '${pattern}'
-    ORDER BY rank;
+  jq_query "
+    [.[] | select(
+      (.description | test(\"$pattern\"; \"i\")) or
+      (.root_cause // \"\" | test(\"$pattern\"; \"i\")) or
+      (.deep_cause // \"\" | test(\"$pattern\"; \"i\"))
+    )]
+    | sort_by(.date) | reverse
   "
 }
 
 cmd_types() {
-  sql_json "SELECT type, COUNT(*) AS count FROM friction GROUP BY type ORDER BY count DESC;"
+  jq_query 'group_by(.type) | map({type: .[0].type, count: length}) | sort_by(.count) | reverse'
 }
 
 cmd_domains() {
-  sql_json "
-    SELECT domain, COUNT(*) AS count
-    FROM friction_domain GROUP BY domain ORDER BY count DESC;
-  "
+  jq_query '
+    [.[].domains[]] | group_by(.) | map({domain: .[0], count: length})
+    | sort_by(.count) | reverse
+  '
 }
 
 cmd_trend() {
@@ -177,15 +167,13 @@ cmd_trend() {
       *) shift ;;
     esac
   done
-  sql_json "
-    SELECT strftime('%Y-W%W', f.date) AS week,
-           COUNT(*) AS count
-    FROM friction f
-    JOIN friction_domain fd ON f.id = fd.friction_id
-    WHERE fd.domain = '${tag}'
-      AND f.date >= date('now', '-${weeks} weeks')
-    GROUP BY week
-    ORDER BY week;
+  local cutoff
+  cutoff=$(date_ago_weeks "$weeks")
+  jq_query "
+    [.[] | select((.domains // [])[] == \"$tag\" and .date >= \"$cutoff\")]
+    | group_by(.date[:4] + \"-W\" + (.date | strptime(\"%Y-%m-%d\") | strftime(\"%W\")))
+    | map({week: .[0].date[:4] + \"-W\" + (.[0].date | strptime(\"%Y-%m-%d\") | strftime(\"%W\")), count: length})
+    | sort_by(.week)
   "
 }
 
@@ -197,14 +185,17 @@ cmd_unconstrained() {
       *) shift ;;
     esac
   done
-  sql_json "
-    SELECT type, deep_cause, COUNT(*) AS occurrences,
-           GROUP_CONCAT(id, ', ') AS friction_ids
-    FROM friction
-    WHERE constraint_existed IS NULL
-    GROUP BY type, deep_cause
-    HAVING COUNT(*) >= ${min}
-    ORDER BY occurrences DESC;
+  jq_query "
+    [.[] | select(.constraint_existed == null)]
+    | group_by(.type + \"|||\" + (.deep_cause // \"\"))
+    | map({
+        type: .[0].type,
+        deep_cause: .[0].deep_cause,
+        occurrences: length,
+        friction_ids: [.[].id] | join(\", \")
+      })
+    | [.[] | select(.occurrences >= $min)]
+    | sort_by(.occurrences) | reverse
   "
 }
 
@@ -216,32 +207,38 @@ cmd_stale() {
       *) shift ;;
     esac
   done
-  sql_json "
-    SELECT constraint_existed AS constraint_name,
-           MAX(date) AS last_seen,
-           COUNT(*) AS total_references
-    FROM friction
-    WHERE constraint_existed IS NOT NULL
-    GROUP BY constraint_existed
-    HAVING MAX(date) < date('now', '-${days} days')
-    ORDER BY last_seen;
+  local cutoff
+  cutoff=$(date_ago_days "$days")
+  jq_query "
+    [.[] | select(.constraint_existed != null)]
+    | group_by(.constraint_existed)
+    | map({
+        constraint_name: .[0].constraint_existed,
+        last_seen: ([.[].date] | max),
+        total_references: length
+      })
+    | [.[] | select(.last_seen < \"$cutoff\")]
+    | sort_by(.last_seen)
   "
 }
 
 cmd_lifecycle() {
-  sql_json "
-    SELECT status, COUNT(*) AS count,
-           GROUP_CONCAT(id, ', ') AS ids
-    FROM friction
-    GROUP BY status
-    ORDER BY CASE status
-      WHEN 'captured' THEN 1
-      WHEN 'analyzed' THEN 2
-      WHEN 'prescribed' THEN 3
-      WHEN 'implemented' THEN 4
-      WHEN 'verified' THEN 5
-    END;
-  "
+  jq_query '
+    group_by(.status)
+    | map({
+        status: .[0].status,
+        count: length,
+        ids: [.[].id] | join(", ")
+      })
+    | sort_by(
+        if .status == "captured" then 1
+        elif .status == "analyzed" then 2
+        elif .status == "prescribed" then 3
+        elif .status == "implemented" then 4
+        elif .status == "verified" then 5
+        else 6 end
+      )
+  '
 }
 
 case "${1:-}" in

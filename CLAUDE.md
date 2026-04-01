@@ -34,9 +34,9 @@ These apply to every session, across all projects. Project-level CLAUDE.md files
 
 ## Learning
 
-- **This file is the entry point, not the whole advisory layer** — Domain-specific context arrives via hooks (friction stats, domain knowledge files) when working in matching projects. Deeper friction data lives in `friction/friction.db` (SQLite), queryable via `friction/scripts/query.sh`. Don't duplicate domain knowledge here — keep this file cross-domain and compact.
+- **This file is the entry point, not the whole advisory layer** — Domain-specific context arrives via hooks (friction stats, domain knowledge files) when working in matching projects. Deeper friction data lives in `friction/friction.jsonl`, queryable via `friction/scripts/query.sh`. Don't duplicate domain knowledge here — keep this file cross-domain and compact.
 
-- **Capture every friction** — Non-trivial friction → `friction/friction.db` immediately, before deciding whether to analyze further. Use `/learn`.
+- **Capture every friction** — Non-trivial friction → `friction/friction.jsonl` immediately, before deciding whether to analyze further. Use `/learn`.
 
 - **Prescribe at all applicable layers** — A single friction may need an advisory rule, a structural hook, and/or a mechanical agent. Don't route to one destination. Use `/learn`.
 

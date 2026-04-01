@@ -11,10 +11,8 @@
 !/friction/domains/
 !/friction/domains/**
 !/friction/domain-map.json
-# Exclude runtime data (DB, logs, archives)
-/friction/friction.db
-/friction/friction.db-*
-/friction/ledger.jsonl*
+# Exclude runtime data (ledger, logs, archives)
+/friction/friction.jsonl
 /friction/hook-activations.jsonl
 !/memory/
 !/memory/**

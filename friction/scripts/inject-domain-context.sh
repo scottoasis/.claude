@@ -2,7 +2,7 @@
 # Domain context injection hook for Claude Code
 # Progressive disclosure levels:
 #   Level 0: CLAUDE.md (always loaded by Claude Code, not this hook)
-#   Level 1: Domain friction stats from SQLite (2-3 lines per domain)
+#   Level 1: Domain friction stats from JSONL (2-3 lines per domain)
 #   Level 2: Domain knowledge files from domains/*.md
 # Configure as UserPromptSubmit hook in ~/.claude/settings.json
 
@@ -11,20 +11,14 @@ set -uo pipefail
 FRICTION_DIR="${HOME}/.claude/friction"
 DOMAIN_MAP="${FRICTION_DIR}/domain-map.json"
 DOMAINS_DIR="${FRICTION_DIR}/domains"
-DB="${FRICTION_DIR}/friction.db"
+LEDGER="${FRICTION_DIR}/friction.jsonl"
 
 # Read hook input from stdin
 INPUT=$(cat)
 CWD=$(echo "$INPUT" | jq -r '.cwd // empty' 2>/dev/null || true)
 
-# Exit silently if no CWD or no domain map
-if [ -z "$CWD" ] || [ ! -f "$DOMAIN_MAP" ]; then
-  echo '{}'
-  exit 0
-fi
-
-# Check if jq is available
-if ! command -v jq &>/dev/null; then
+# Exit silently if no CWD, no domain map, or no jq
+if [ -z "$CWD" ] || [ ! -f "$DOMAIN_MAP" ] || ! command -v jq &>/dev/null; then
   echo '{}'
   exit 0
 fi
@@ -42,39 +36,32 @@ fi
 
 CONTEXT=""
 
-# --- Level 1: Friction stats from SQLite ---
-if [ -f "$DB" ] && command -v sqlite3 &>/dev/null; then
+# --- Level 1: Friction stats from JSONL ---
+if [ -f "$LEDGER" ]; then
+  CUTOFF_30D=$(date -v-30d +%Y-%m-%d 2>/dev/null || date -d "-30 days" +%Y-%m-%d)
   while IFS= read -r domain; do
-    STATS=$(sqlite3 "$DB" "
-      SELECT COUNT(*) AS total,
-             SUM(CASE WHEN date >= date('now','-30 days') THEN 1 ELSE 0 END) AS last_30d,
-             SUM(CASE WHEN constraint_failed = 1 THEN 1 ELSE 0 END) AS failures
-      FROM friction f
-      JOIN friction_domain fd ON f.id = fd.friction_id
-      WHERE fd.domain = '${domain}';
-    " 2>/dev/null || true)
+    DOMAIN_STATS=$(jq -s --arg d "$domain" --arg cutoff "$CUTOFF_30D" '
+      [.[] | select((.domains // [])[] == $d)] |
+      if length == 0 then empty else
+        {
+          total: length,
+          last_30d: [.[] | select(.date >= $cutoff)] | length,
+          failures: [.[] | select(.constraint_failed == 1)] | length,
+          top_type: (group_by(.type) | sort_by(length) | reverse | .[0] | "\(.[0].type) (\(length)x)")
+        }
+      end
+    ' "$LEDGER" 2>/dev/null || true)
 
-    if [ -n "$STATS" ] && [ "$STATS" != "0|0|0" ]; then
-      IFS='|' read -r total last30 failures <<< "$STATS"
-      # Only inject if there's actual data
-      if [ "${total:-0}" -gt 0 ]; then
-        CONTEXT="${CONTEXT}
+    if [ -n "$DOMAIN_STATS" ]; then
+      total=$(echo "$DOMAIN_STATS" | jq -r '.total')
+      last30=$(echo "$DOMAIN_STATS" | jq -r '.last_30d')
+      failures=$(echo "$DOMAIN_STATS" | jq -r '.failures')
+      top_type=$(echo "$DOMAIN_STATS" | jq -r '.top_type')
+      CONTEXT="${CONTEXT}
 
 ## Friction: ${domain}
-- ${total} total (${last30} in last 30 days, ${failures} constraint failures)"
-
-        # Top friction type for this domain
-        TOP_TYPE=$(sqlite3 "$DB" "
-          SELECT f.type || ' (' || COUNT(*) || 'x)'
-          FROM friction f
-          JOIN friction_domain fd ON f.id = fd.friction_id
-          WHERE fd.domain = '${domain}'
-          GROUP BY f.type
-          ORDER BY COUNT(*) DESC LIMIT 1;
-        " 2>/dev/null || true)
-        [ -n "$TOP_TYPE" ] && CONTEXT="${CONTEXT}
-- Top type: ${TOP_TYPE}"
-      fi
+- ${total} total (${last30} in last 30 days, ${failures} constraint failures)
+- Top type: ${top_type}"
     fi
   done <<< "$MATCHING_DOMAINS"
 fi
