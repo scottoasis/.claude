@@ -1,3 +1,6 @@
 [submodule "/Users/scott/.claude/skills/web-access"]
 	path = /Users/scott/.claude/skills/web-access
 	url = https://github.com/eze-is/web-access.git
+[submodule "plugins/marketplaces/obra/superpowers-marketplace"]
+	path = plugins/marketplaces/obra/superpowers-marketplace
+	url = https://github.com/obra/superpowers-marketplace

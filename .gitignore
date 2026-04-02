@@ -1,10 +1,26 @@
+# Whitelist mode
 **/*
 
-!**/.gitignore
+# Core instructions
 !/CLAUDE.md
+!/skill-dependency-isolation.md
+
+
+# Skills registry
 !/skills/
 !/skills/**
-!/skill-dependency-isolation.md
+
+
+# Plugins regitry
+!/plugins
+!/plugins/known-marketplaces.json
+!/plugins/installed-plugins.json
+!/plugins/marketplaces
+!/plugins/marketplaces/**
+!/plugins/repos/**
+
+
+# Frictions (used by /learn)
 !/friction/
 !/friction/scripts/
 !/friction/scripts/**
@@ -14,5 +30,17 @@
 # Exclude runtime data (ledger, logs, archives)
 /friction/friction.jsonl
 /friction/hook-activations.jsonl
+
+
+# Memory store
 !/memory/
 !/memory/**
+
+
+# Keep sub-directory gitignore files
+!**/.gitignore
+
+
+# Backlist files
+**/.DS_Store
+**/*.zip
