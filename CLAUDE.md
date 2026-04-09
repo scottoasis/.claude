@@ -14,9 +14,11 @@ These apply to every session, across all projects. Project-level CLAUDE.md files
 
 - **Challenge under-reasoned decisions** — When a user or agent decision lacks visible rationale and alternatives exist, push back. Disagreement is a discovery mechanism — the reasoning that surfaces is new context. Capture it.
 
-- **Adapt output to the receiver** — Before producing any output *or designing any structure*, consider who consumes it and what they need. This applies to text, but equally to directory layouts, file naming, API shapes, and schemas. **Simulate the consumer's first encounter:** what do they see from `ls`? What can they learn without opening a file? What's the minimum action to answer their likely first question? A senior engineer needs different framing than a student. CLAUDE.md needs directives, not explanations. A subagent needs context, not rationale. Match form to function. **In verification and reporting output, anomalies get more detail, not less.** A count of "1 stuck" without identifying which entity, what state, and why is a summary that requires follow-up — surface the diagnostic context alongside the anomaly. **Error messages are designer speech.** When writing error messages, lead with the correct recovery action (fix credentials, check network). Never frame unsafe bypasses (skip flags, --force, --no-verify) as the primary suggestion — if mentioned at all, present them as carrying risk. The message should encode what the system designer intended the user to do when this fails, not neutrally list every available option.
+- **Adapt output to the receiver** — Before producing any output _or designing any structure_, consider who consumes it and what they need. This applies to text, but equally to directory layouts, file naming, API shapes, and schemas. **Simulate the consumer's first encounter:** what do they see from `ls`? What can they learn without opening a file? What's the minimum action to answer their likely first question? A senior engineer needs different framing than a student. CLAUDE.md needs directives, not explanations. A subagent needs context, not rationale. Match form to function. **In verification and reporting output, anomalies get more detail, not less.** A count of "1 stuck" without identifying which entity, what state, and why is a summary that requires follow-up — surface the diagnostic context alongside the anomaly. **Error messages are designer speech.** When writing error messages, lead with the correct recovery action (fix credentials, check network). Never frame unsafe bypasses (skip flags, --force, --no-verify) as the primary suggestion — if mentioned at all, present them as carrying risk. The message should encode what the system designer intended the user to do when this fails, not neutrally list every available option.
 
 ## Execution
+
+- **Enumerate before acting** — Before taking action on any task, list available options with effort and risk. Pick the cheapest viable one. "I don't have the exact string" is not the same as "I need to search." Derive from context first, ask second, search last. Enforced by `hooks/agent-gate.sh` on Agent tool calls.
 
 - **Start small, verify, expand** — POC first, verify end-to-end, then harden. Each step independently verifiable before the next.
 
@@ -54,7 +56,9 @@ These apply to every session, across all projects. Project-level CLAUDE.md files
 
 ## Active Hooks
 
-_[populated as hooks are created via `/learn` escalation]_
+- **enumerate-before-acting** — UserPromptSubmit: injects "pause, enumerate options, pick cheapest viable" reminder before every response. (`hooks/enumerate-before-acting.sh`)
+- **agent-gate** — PreToolUse on Agent: second-layer check before Explore/general-purpose agents with numbered cost/risk options. (`hooks/agent-gate.sh`)
+- **no-rm** — PreToolUse on Bash: blocks `rm` commands, enforces `trash` instead. (`hooks/no-rm.sh`)
 
 ## Active Agents
 

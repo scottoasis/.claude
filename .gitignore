@@ -1,6 +1,10 @@
 # Whitelist mode
 **/*
 
+# Settings (hooks, etc)
+!settings.json
+
+
 # Core instructions
 !/CLAUDE.md
 !/skill-dependency-isolation.md
@@ -9,6 +13,12 @@
 # Skills registry
 !/skills/
 !/skills/**
+
+
+# Hooks registry
+!/hooks/
+!/hooks/*.sh
+hooks/test-hooks.sh
 
 
 # Plugins regitry
