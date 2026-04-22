@@ -1,5 +1,43 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Bash(git worktree add:*)",
+      "Bash(git worktree list:*)",
+      "Bash(git worktree move:*)",
+      "Bash(git worktree prune:*)",
+      "Bash(git worktree lock:*)",
+      "Bash(git worktree unlock:*)",
+      "Bash(git worktree repair:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git stash:*)",
+      "Bash(git log:*)",
+      "Bash(git reflog:*)",
+      "Bash(git show:*)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git blame:*)",
+      "Bash(git ls-files:*)",
+      "Bash(git ls-tree:*)",
+      "Bash(git ls-remote:*)",
+      "Bash(git rev-parse:*)",
+      "Bash(git rev-list:*)",
+      "Bash(git check-ignore:*)",
+      "Bash(git describe:*)",
+      "Bash(git shortlog:*)",
+      "Bash(git cat-file:*)"
+    ],
+    "ask": [
+      "Bash(git worktree remove:*)",
+      "Bash(git rm:*)",
+      "Bash(git reset --hard:*)",
+      "Bash(git reset --hard)",
+      "Bash(git push:*)",
+      "Bash(git push)"
+    ],
+    "deny": ["Bash(git merge:*)", "Bash(git merge)"]
+  },
   "env": {
     "CLAUDE_CODE_DISABLE_TERMINAL_TITLE": "1"
   },
@@ -21,6 +59,16 @@
           {
             "type": "command",
             "command": "~/.claude/hooks/no-rm.sh",
+            "timeout": 2
+          },
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/commit-header-check.sh",
+            "timeout": 2
+          },
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/git-perm-gate.sh",
             "timeout": 2
           }
         ]

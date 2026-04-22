@@ -26,6 +26,8 @@ These apply to every session, across all projects. Project-level CLAUDE.md files
 
 - **Isolate work in worktrees** — Git worktrees for code changes, even small fixes — they often escalate. Use `/using-git-worktrees`.
 
+- **Commit atomically inside worktrees** — If you are inside a worktree, commit on each smallest coherent change. Do not let modifications pile up unstaged. Each logical fix/refactor/feature = its own commit with a clear message. Commit after verifying the change works, before starting the next one. Leaving a mountain of mixed changes in the worktree destroys bisect, review, and rollback — and silently couples unrelated decisions.
+
 - **Sequence and checkpoint** — 3+ files or unclear scope → outline sequence, verify each step before the next.
 
 - **Validate risky assumptions first** — Unverified assumption (API behavior, library capability, external state) → validate before building on it.
@@ -59,6 +61,7 @@ These apply to every session, across all projects. Project-level CLAUDE.md files
 - **enumerate-before-acting** — UserPromptSubmit: injects "pause, enumerate options, pick cheapest viable" reminder before every response. (`hooks/enumerate-before-acting.sh`)
 - **agent-gate** — PreToolUse on Agent: second-layer check before Explore/general-purpose agents with numbered cost/risk options. (`hooks/agent-gate.sh`)
 - **no-rm** — PreToolUse on Bash: blocks `rm` commands, enforces `trash` instead. (`hooks/no-rm.sh`)
+- **commit-header-check** — PreToolUse on Bash: validates `git commit -m` header against `^(feature|infra|fix|chore|deps|docs): .+`. Blocks wrong prefix (`feat`, `doc`), scoped form (`fix(scope):`), and missing prefix. Skips `-F`, `-C`, `--amend --no-edit`, and editor-based commits. (`hooks/commit-header-check.sh`)
 
 ## Active Agents
 
