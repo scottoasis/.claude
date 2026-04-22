@@ -58,7 +58,8 @@ These apply to every session, across all projects. Project-level CLAUDE.md files
 
 ## Active Hooks
 
-- **enumerate-before-acting** — UserPromptSubmit: injects "pause, enumerate options, pick cheapest viable" reminder before every response. (`hooks/enumerate-before-acting.sh`)
+- **enumerate-before-acting** — UserPromptSubmit: injects invariants + delta + context reminder before every response. Asks the model to name what must stay true, inventory what's already known, and for each planned step ask whether skipping it would change the answer. Explicit "small, proceeding" bypass for trivial prompts. Reshaped 2026-04-22 from the prior "list 3 options, pick cheapest viable" framing, which degenerated into strawman-option theater. (`hooks/enumerate-before-acting.sh`)
+- **step-delta-check** — PreToolUse on Write/Edit: re-asks the delta question at each material step so the discipline survives past the first action. Advisory only. (`hooks/step-delta-check.sh`)
 - **agent-gate** — PreToolUse on Agent: second-layer check before Explore/general-purpose agents with numbered cost/risk options. (`hooks/agent-gate.sh`)
 - **no-rm** — PreToolUse on Bash: blocks `rm` commands, enforces `trash` instead. (`hooks/no-rm.sh`)
 - **commit-header-check** — PreToolUse on Bash: validates `git commit -m` header against `^(feature|infra|fix|chore|deps|docs): .+`. Blocks wrong prefix (`feat`, `doc`), scoped form (`fix(scope):`), and missing prefix. Skips `-F`, `-C`, `--amend --no-edit`, and editor-based commits. (`hooks/commit-header-check.sh`)

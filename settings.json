@@ -74,6 +74,16 @@
             "timeout": 2
           }
         ]
+      },
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/step-delta-check.sh",
+            "timeout": 2
+          }
+        ]
       }
     ],
     "UserPromptSubmit": [
