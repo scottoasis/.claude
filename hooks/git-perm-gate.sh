@@ -1,14 +1,12 @@
 #!/usr/bin/env bash
-# PreToolUse hook for Bash: emit permission decisions for `git -C <path> <cmd>`.
+# PreToolUse hook for Bash: emit permission decisions for git commands in
+# both direct (`git <cmd>`) and `-C <path>` forms.
 #
 # Claude Code's permission matcher only honors trailing `*` wildcards, so
-# rules like `Bash(git -C * log:*)` in settings.json are literal (dead).
-# This hook parses the `-C` form and emits the same allow/ask/deny decisions
-# that the direct-form rules already encode.
-#
-# Direct-form commands (`git log`, `git add`, etc.) are matched by the
-# permission rules in .claude/settings.json — this hook only handles the
-# `git -C <path> ...` form and passes everything else through.
+# rules like `Bash(git -C * log:*)` in settings.json are literal (dead) —
+# the `-C` form needs a hook. The direct form is also handled here so that
+# deny/ask decisions can carry a concrete recovery instruction; bare
+# settings.json denies surface only "Permission ... has been denied."
 
 set -uo pipefail
 
@@ -23,12 +21,16 @@ case "$COMMAND" in
   *'&&'*|*'||'*|*';'*|*'|'*|*'>'*|*'<'*|*'`'*|*'$('*) exit 0 ;;
 esac
 
-# Match: optional ws, git, ws, -C, ws, path-token (unquoted), ws, rest.
-# Quoted paths with spaces fall through to default prompting.
-if ! [[ "$COMMAND" =~ ^[[:space:]]*git[[:space:]]+-C[[:space:]]+[^[:space:]]+[[:space:]]+(.+)$ ]]; then
+# Match either `git -C <path> <rest>` or plain `git <rest>`. We need the
+# direct form too so deny/ask decisions carry a useful reason — bare
+# settings.json denies surface only "Permission ... has been denied."
+if [[ "$COMMAND" =~ ^[[:space:]]*git[[:space:]]+-C[[:space:]]+[^[:space:]]+[[:space:]]+(.+)$ ]]; then
+  REST="${BASH_REMATCH[1]}"
+elif [[ "$COMMAND" =~ ^[[:space:]]*git[[:space:]]+(.+)$ ]]; then
+  REST="${BASH_REMATCH[1]}"
+else
   exit 0
 fi
-REST="${BASH_REMATCH[1]}"
 
 emit() {
   jq -cn --arg d "$1" --arg r "$2" \
@@ -38,7 +40,21 @@ emit() {
 
 # DENY (most restrictive, check first).
 if [[ "$REST" =~ ^merge([[:space:]]|$) ]]; then
-  emit "deny" "git merge is blocked here (use rebase or pull --rebase)"
+  # Parse the first non-flag token after `merge` as the target branch.
+  TARGET=""
+  read -r -a _ARGS <<<"$REST"
+  for ((i=1; i<${#_ARGS[@]}; i++)); do
+    tok="${_ARGS[i]}"
+    case "$tok" in
+      -*) continue ;;
+      *)  TARGET="$tok"; break ;;
+    esac
+  done
+  if [ -n "$TARGET" ]; then
+    emit "deny" "git merge is blocked. To bring ${TARGET}'s commits onto the current branch: 'git rebase ${TARGET}'. To fast-forward ${TARGET} to the current branch instead: 'git switch ${TARGET} && git rebase -' (then 'git switch -' to return). For PR integration: push and merge via the PR UI."
+  else
+    emit "deny" "git merge is blocked. Use 'git rebase <branch>' to bring <branch>'s commits onto the current branch, or 'git pull --rebase' to update from upstream. For PR integration: push and merge via the PR UI."
+  fi
 fi
 
 # ASK (check before ALLOW so `worktree remove` wins over the `worktree` allow).
