@@ -1,5 +1,10 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "env": {
+    "CLAUDE_CODE_DISABLE_TERMINAL_TITLE": "1",
+    "CLAUDE_CODE_DISABLE_ADAPTIVE_THINKING": "1",
+    "MAX_THINKING_TOKENS": "128000"
+  },
   "permissions": {
     "allow": [
       "Bash(git worktree add:*)",
@@ -28,6 +33,10 @@
       "Bash(git shortlog:*)",
       "Bash(git cat-file:*)"
     ],
+    "deny": [
+      "Bash(git merge:*)",
+      "Bash(git merge)"
+    ],
     "ask": [
       "Bash(git worktree remove:*)",
       "Bash(git rm:*)",
@@ -35,13 +44,7 @@
       "Bash(git reset --hard)",
       "Bash(git push:*)",
       "Bash(git push)"
-    ],
-    "deny": ["Bash(git merge:*)", "Bash(git merge)"]
-  },
-  "env": {
-    "CLAUDE_CODE_DISABLE_TERMINAL_TITLE": "1",
-    "CLAUDE_CODE_DISABLE_ADAPTIVE_THINKING": "1",
-    "MAX_THINKING_TOKENS": "128000"
+    ]
   },
   "hooks": {
     "PreToolUse": [
@@ -128,5 +131,6 @@
   "skipDangerousModePermissionPrompt": true,
   "feedbackSurveyState": {
     "lastShownTime": 1754147999307
-  }
+  },
+  "skipAutoPermissionPrompt": true
 }
