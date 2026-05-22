@@ -20,22 +20,24 @@ if echo "$COMMAND" | grep -qE '(^|[[:space:]])(-F|--file|-C|--reuse-message|--fi
   exit 0
 fi
 
-# Extract the header: first non-empty line of the first -m / --message value.
+# Extract the header: first non-empty line of the *first* -m / --message
+# value. The value may be a plain quoted string or a "$(cat <<EOF ...)"
+# heredoc; a later -m (e.g. the body) must not be read as the header.
 HEADER=$(printf '%s' "$COMMAND" | perl -0777 -ne '
-  # Heredoc form: -m "$(cat <<EOF\nHEADER\n...EOF)"
-  if (/<<-?\s*["\x27]?(\w+)["\x27]?[^\n]*\n([^\n]*)/s) {
+  # Isolate the first message flag and everything after it.
+  next unless /(?:^|\s)(?:-[a-z]*m|--message)(?:=|\s+)(.*)$/s;
+  my $rest = $1;
+  # Heredoc value: -m "$(cat <<EOF\nHEADER\n...EOF)"
+  if ($rest =~ /^["\x27]?\$\(\s*cat\s*<<-?\s*["\x27]?(\w+)["\x27]?[^\n]*\n([^\n]*)/s) {
     my $h = $2; $h =~ s/^\s+|\s+$//g;
-    if (length $h) { print "$h\n"; exit 0; }
+    print "$h\n" if length $h;
+    exit 0;
   }
-  # -m "msg" / -am "msg" / --message="msg" / --message "msg"
-  for my $re (
-    qr/(?:^|\s)-[a-z]*m(?:=|\s+)(["\x27])((?:\\.|(?!\1).)*?)\1/s,
-    qr/(?:^|\s)--message(?:=|\s+)(["\x27])((?:\\.|(?!\1).)*?)\1/s,
-  ) {
-    if (/$re/) {
-      my $m = $2; $m =~ s/\n.*//s; $m =~ s/^\s+|\s+$//g;
-      if (length $m) { print "$m\n"; exit 0; }
-    }
+  # Plain quoted value: -m "msg" / -am "msg" / --message="msg"
+  if ($rest =~ /^(["\x27])((?:\\.|(?!\1).)*?)\1/s) {
+    my $m = $2; $m =~ s/\n.*//s; $m =~ s/^\s+|\s+$//g;
+    print "$m\n" if length $m;
+    exit 0;
   }
 ')
 
