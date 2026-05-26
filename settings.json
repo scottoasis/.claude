@@ -109,8 +109,7 @@
   },
   "statusLine": {
     "type": "command",
-    "command": "~/.claude/ccline/ccline",
-    "padding": 0
+    "command": "bash ~/.claude/statusline-command.sh"
   },
   "enabledPlugins": {
     "compound-engineering@every-marketplace": true,
