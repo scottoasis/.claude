@@ -15,9 +15,10 @@
 hooks/test-hooks.sh
 
 
-# Plugins registry — track manifests only; marketplace contents are managed by /plugin
+# Plugins registry — track installed_plugins.json only (the reproducibility input).
+# known_marketplaces.json is derivable from settings.json + installed_plugins.json and
+# its lastUpdated timestamp churns on every /plugin background sync, so it's ignored.
 !/plugins
-!/plugins/known_marketplaces.json
 !/plugins/installed_plugins.json
 
 
