@@ -4,6 +4,22 @@ These apply to every session, across all projects. Project-level CLAUDE.md files
 
 ---
 
+## Response format
+
+Every response that involves design, recommendation, analysis, architectural choice, or any non-trivial decision must open with one line:
+
+```
+GOAL: <the user's actual goal for this work, in your own words, one sentence>
+```
+
+No exceptions clause; no self-applied "small, proceeding" bypass. If the prompt is genuinely trivial (bare acknowledgments like "yes" / "go ahead" / "no") and the response is also trivial, the format is skipped — because the response itself carries no design content to evaluate. The boundary is *does this response have substance to evaluate*, not a judgment about prompt size.
+
+A vacuous restatement (`GOAL: help me build this`) is itself a visible defect; the reader can compare the GOAL line against the body and call out drift. Stating the goal by citing a named principle (DDD, SOLID, façade, leaky, onion architecture, "separation of concerns") is the failure mode this exists to catch — restate in concrete user-facing terms instead.
+
+This is a constitutive format requirement, not an advisory injection. It is observable in every response, including pure-prose ones with no tool use. Background on the four failure modes (over-abstraction, goal amnesia, wrong-taxonomy import, stacked dogma) and the Pólya look-back checklist: `friction/domains/reasoning-discipline.md`.
+
+---
+
 ## Reasoning
 
 - **Resolve ambiguity before acting** — 2+ valid interpretations on scope/location/architecture → ask. Don't proceed on reasonable-sounding guesses. Infer latent requirements from the user's goal — the subject often carries constraints not stated in the request.
@@ -15,6 +31,8 @@ These apply to every session, across all projects. Project-level CLAUDE.md files
 - **Challenge under-reasoned decisions** — When a user or agent decision lacks visible rationale and alternatives exist, push back. Disagreement is a discovery mechanism — the reasoning that surfaces is new context. Capture it.
 
 - **Adapt output to the receiver** — Before producing any output _or designing any structure_, consider who consumes it and what they need. This applies to text, but equally to directory layouts, file naming, API shapes, and schemas. **Simulate the consumer's first encounter:** what do they see from `ls`? What can they learn without opening a file? What's the minimum action to answer their likely first question? A senior engineer needs different framing than a student. CLAUDE.md needs directives, not explanations. A subagent needs context, not rationale. Match form to function. **In verification and reporting output, anomalies get more detail, not less.** A count of "1 stuck" without identifying which entity, what state, and why is a summary that requires follow-up — surface the diagnostic context alongside the anomaly. **Error messages are designer speech.** When writing error messages, lead with the correct recovery action (fix credentials, check network). Never frame unsafe bypasses (skip flags, --force, --no-verify) as the primary suggestion — if mentioned at all, present them as carrying risk. The message should encode what the system designer intended the user to do when this fails, not neutrally list every available option.
+
+- **Derive from the goal, not from principles** — If you cite named theories (DDD, SOLID, façade, leaky, onion architecture, "separation of concerns") before restating the user's goal in your own words, stop and restate. Principles are notes about past corrections, not premises for future ones. When the user corrects you, tag the correction's scope (this line / this file / this project / universal) and default to the narrowest scope — promoting to "universal" requires explicit assent. When corrections recur or principle-citations stack across turns, read `friction/domains/reasoning-discipline.md` for the four named failure modes (over-abstraction, goal amnesia, wrong-taxonomy import, stacked dogma) and the Pólya look-back checklist.
 
 ## Execution
 
@@ -58,8 +76,7 @@ These apply to every session, across all projects. Project-level CLAUDE.md files
 
 ## Active Hooks
 
-- **enumerate-before-acting** — UserPromptSubmit: injects invariants + delta + context reminder before every response. Asks the model to name what must stay true, inventory what's already known, and for each planned step ask whether skipping it would change the answer. Explicit "small, proceeding" bypass for trivial prompts. Reshaped 2026-04-22 from the prior "list 3 options, pick cheapest viable" framing, which degenerated into strawman-option theater. (`hooks/enumerate-before-acting.sh`)
-- **step-delta-check** — PreToolUse on Write/Edit: re-asks the delta question at each material step so the discipline survives past the first action. Advisory only. (`hooks/step-delta-check.sh`)
+- **step-delta-check** — PreToolUse on Write/Edit: re-asks the delta question at each material step so the discipline survives past the first action, and adds a principle-tower audit (since 2026-05-26) that asks whether an edit justified by a named theory also derives from the user's actual goal. Advisory only. (`hooks/step-delta-check.sh`)
 - **agent-gate** — PreToolUse on Agent: second-layer check before Explore/general-purpose agents with numbered cost/risk options. (`hooks/agent-gate.sh`)
 - **no-rm** — PreToolUse on Bash: blocks `rm` commands, enforces `trash` instead. (`hooks/no-rm.sh`)
 - **commit-header-check** — PreToolUse on Bash: validates `git commit -m` header against `^(feature|infra|fix|chore|deps|docs): .+`. Blocks wrong prefix (`feat`, `doc`), scoped form (`fix(scope):`), and missing prefix. Skips `-F`, `-C`, `--amend --no-edit`, and editor-based commits. (`hooks/commit-header-check.sh`)

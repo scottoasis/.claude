@@ -97,11 +97,6 @@
             "type": "command",
             "command": "~/.claude/friction/scripts/inject-domain-context.sh",
             "timeout": 5
-          },
-          {
-            "type": "command",
-            "command": "~/.claude/hooks/enumerate-before-acting.sh",
-            "timeout": 2
           }
         ]
       }
