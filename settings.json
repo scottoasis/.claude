@@ -110,6 +110,18 @@
           }
         ]
       }
+    ],
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/hedge-gate.sh",
+            "timeout": 5
+          }
+        ]
+      }
     ]
   },
   "statusLine": {

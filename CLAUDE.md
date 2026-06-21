@@ -30,7 +30,29 @@ No exceptions clause; no self-applied "small, proceeding" bypass. If the prompt 
 
 A vacuous restatement (`GOAL: help me build this`) is itself a visible defect; the reader can compare the GOAL line against the body and call out drift. Stating the goal by citing a named principle (DDD, SOLID, façade, leaky, onion architecture, "separation of concerns") is the failure mode this exists to catch — restate in concrete user-facing terms instead.
 
-This is a constitutive format requirement, not an advisory injection. It is observable in every response, including pure-prose ones with no tool use. Background on the four failure modes (over-abstraction, goal amnesia, wrong-taxonomy import, stacked dogma) and the Pólya look-back checklist: `friction/domains/reasoning-discipline.md`.
+Before writing these lines, bind ambiguous terms from the latest user message
+(`here`, `server`, `client`, `target`) to concrete entities. Derive the lines
+from explicit user statements, not from the current plan, an earlier assistant
+inference, or an automated summary. Separate:
+
+- **Goal** — the outcome the user wants.
+- **Invariants** — explicit constraints that must remain true regardless of
+  approach.
+- **Observations** — facts about the environment that may or may not be
+  relevant to the current decision.
+- **Delta** — what the latest user message changed.
+
+Apply a causal-relevance check before carrying an observation into the answer:
+would changing that observation change the specific decision or question now
+being answered? If no, omit it from the justification. A plausible GOAL line
+does not compensate for a contaminated invariant set.
+
+This is a constitutive format requirement, reinforced by
+`hooks/reconcile-before-responding.sh`. It is observable in every response,
+including pure-prose ones with no tool use. Background on the four failure
+modes (over-abstraction, goal amnesia, wrong-taxonomy import, stacked dogma)
+and the Pólya look-back checklist:
+`friction/domains/reasoning-discipline.md`.
 
 ---
 
@@ -90,10 +112,17 @@ This is a constitutive format requirement, not an advisory injection. It is obse
 
 ## Active Hooks
 
+- **reconcile-before-responding** — UserPromptSubmit: binds ambiguous entities,
+  separates explicit invariants from observations, identifies the latest
+  correction's delta, and applies a causal-relevance gate before the response
+  is formed. Advisory injection paired with the constitutive GOAL /
+  INVARIANTS / DELTA response contract.
+  (`hooks/reconcile-before-responding.sh`)
 - **step-delta-check** — PreToolUse on Write/Edit: re-asks the delta question at each material step so the discipline survives past the first action, and adds a principle-tower audit (since 2026-05-26) that asks whether an edit justified by a named theory also derives from the user's actual goal. Advisory only. (`hooks/step-delta-check.sh`)
 - **agent-gate** — PreToolUse on Agent: second-layer check before Explore/general-purpose agents with numbered cost/risk options. (`hooks/agent-gate.sh`)
 - **no-rm** — PreToolUse on Bash: blocks `rm` commands, enforces `trash` instead. (`hooks/no-rm.sh`)
 - **commit-header-check** — PreToolUse on Bash: validates `git commit -m` header against `^(feature|infra|fix|chore|deps|docs): .+`. Blocks wrong prefix (`feat`, `doc`), scoped form (`fix(scope):`), and missing prefix. Skips `-F`, `-C`, `--amend --no-edit`, and editor-based commits. (`hooks/commit-header-check.sh`)
+- **hedge-gate** — Stop: blocks the turn from ending when the final assistant prose ships an ungrounded hedge about checkable state (`likely`, `probably`, `should be`, `presumably`, `I think/believe/assume`, `my guess`, `seems like`, `apparently`, `caveat`, `honestly`, and the honesty-frame `one/to be/being/in all honest(y)`) — forcing a verify-or-restate. Matches BARE PROSE only (fenced/inline code, `"quoted"` spans, and `>`-blockquotes are stripped, so discussing a hedge word never fires). Bites ONCE per response: releases when `stop_hook_active` is true; Claude Code's 3-block guard is the deadlock backstop. Fail-open on any read error. Escalated from advisory CLAUDE.md text after the rule kept failing. (`hooks/hedge-gate.sh`)
 
 ## Active Agents
 
