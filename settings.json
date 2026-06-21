@@ -100,6 +100,11 @@
         "hooks": [
           {
             "type": "command",
+            "command": "~/.claude/hooks/reconcile-before-responding.sh",
+            "timeout": 2
+          },
+          {
+            "type": "command",
             "command": "~/.claude/friction/scripts/inject-domain-context.sh",
             "timeout": 5
           }

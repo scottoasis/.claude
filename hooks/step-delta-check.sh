@@ -2,11 +2,11 @@
 # PreToolUse hook: per-step delta + invariant + principle-tower check for Write/Edit.
 # Fires before every file mutation. Advisory only — does not block.
 #
-# Paired with hooks/enumerate-before-acting.sh (UserPromptSubmit). That hook
-# asks for invariants/delta/goal at the start of a task; this hook re-asks
-# the delta question at the moment of each material step, so the discipline
-# survives into the middle of a task instead of decaying after the first
-# tool call.
+# Paired with hooks/reconcile-before-responding.sh (UserPromptSubmit). That
+# hook reconciles goal/invariants/delta at the start of a turn; this hook
+# re-asks the delta question at the moment of each material step, so the
+# discipline survives into the middle of a task instead of decaying after
+# the first tool call.
 #
 # Principle-tower layer (since 2026-05-26): if the edit is justified by a
 # named theory (DDD, SOLID, leaky, façade, onion), check that the same

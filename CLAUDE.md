@@ -12,6 +12,20 @@ Every response that involves design, recommendation, analysis, architectural cho
 GOAL: <the user's actual goal for this work, in your own words, one sentence>
 ```
 
+If the latest user message corrects, disambiguates, narrows, redirects, or
+binds scope/location/entities, follow the GOAL line with:
+
+```
+INVARIANTS: <the explicit user constraints that remain true>
+DELTA: <exactly what the latest message changes, excludes, or leaves unchanged>
+```
+
+Keep both lines concrete and concise. `DELTA` is not a conversation recap. It
+must identify the changed axis and explicitly separate it from orthogonal
+observations. For example, correcting the client execution host does not by
+itself change a remote database condition; conversely, a remote database
+condition does not justify overriding the requested client host.
+
 No exceptions clause; no self-applied "small, proceeding" bypass. If the prompt is genuinely trivial (bare acknowledgments like "yes" / "go ahead" / "no") and the response is also trivial, the format is skipped — because the response itself carries no design content to evaluate. The boundary is *does this response have substance to evaluate*, not a judgment about prompt size.
 
 A vacuous restatement (`GOAL: help me build this`) is itself a visible defect; the reader can compare the GOAL line against the body and call out drift. Stating the goal by citing a named principle (DDD, SOLID, façade, leaky, onion architecture, "separation of concerns") is the failure mode this exists to catch — restate in concrete user-facing terms instead.
