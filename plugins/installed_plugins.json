@@ -44,11 +44,21 @@
     "vercel@claude-plugins-official": [
       {
         "scope": "user",
-        "installPath": "/Users/scott/.claude/plugins/cache/claude-plugins-official/vercel/0.43.0",
-        "version": "0.43.0",
+        "installPath": "/Users/scott/.claude/plugins/cache/claude-plugins-official/vercel/0.44.0",
+        "version": "0.44.0",
         "installedAt": "2026-05-13T09:47:16.929Z",
-        "lastUpdated": "2026-05-19T07:19:23.579Z",
+        "lastUpdated": "2026-06-15T04:15:09.056Z",
         "gitCommitSha": "61f1903bed7b322c9745f6ba67095bc006de7e63"
+      }
+    ],
+    "codex@openai-codex": [
+      {
+        "scope": "user",
+        "installPath": "/Users/scott/.claude/plugins/cache/openai-codex/codex/1.0.4",
+        "version": "1.0.4",
+        "installedAt": "2026-06-05T03:36:20.146Z",
+        "lastUpdated": "2026-06-05T03:36:20.146Z",
+        "gitCommitSha": "807e03ac9d5aa23bc395fdec8c3767500a86b3cf"
       }
     ]
   }
