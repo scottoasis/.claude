@@ -87,10 +87,33 @@ if [ "$has_git" = "1" ]; then
   counts_label="(${fg_untracked}${untracked}${fg}:${fg_unstaged}${unstaged}${fg}:${fg_staged}${staged}${fg})"
 fi
 
+# ── Segment 4: time since Claude's last message ──────────────────────
+# Only ticks while idle if settings.json sets statusLine.refreshInterval.
+idle_label=""
+tp=$(echo "$input" | jq -r '.transcript_path // empty')
+if [ -f "$tp" ]; then
+  # Last assistant line in the transcript JSONL (top-level "type":"assistant").
+  ts=$(grep '"type":"assistant"' "$tp" | tail -1 | jq -r '.timestamp // empty')
+  if [ -n "$ts" ]; then
+    # timestamp is ISO-8601 UTC; parse as UTC so the epoch diff is TZ-safe.
+    last=$(TZ=UTC date -j -f "%Y-%m-%dT%H:%M:%S" "${ts:0:19}" +%s 2>/dev/null)
+    if [ -n "$last" ]; then
+      e=$(( $(date +%s) - last ))
+      [ "$e" -lt 0 ] && e=0
+      if   [ "$e" -lt 60 ];   then et="${e}s"
+      elif [ "$e" -lt 3600 ]; then et="$((e/60))m$((e%60))s"
+      else                         et="$((e/3600))h$(((e%3600)/60))m"
+      fi
+      idle_label="${fg_muted}⏱ ${et}${fg}"
+    fi
+  fi
+fi
+
 # ── Assemble & render ────────────────────────────────────────────────
 sep="   "
 line="${bg}${fg} ${model_label}${sep}${cwd_label}"
 [ -n "$counts_label" ] && line="${line}${sep}${counts_label}"
+[ -n "$idle_label" ] && line="${line}${sep}${idle_label}"
 line="${line}${bg}${el}${reset}"
 
 printf '%s\n' "$line"

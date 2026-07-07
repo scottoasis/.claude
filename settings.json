@@ -126,7 +126,8 @@
   },
   "statusLine": {
     "type": "command",
-    "command": "bash ~/.claude/statusline-command.sh"
+    "command": "bash ~/.claude/statusline-command.sh",
+    "refreshInterval": 1
   },
   "enabledPlugins": {
     "compound-engineering@every-marketplace": true,
