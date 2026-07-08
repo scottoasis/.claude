@@ -123,6 +123,11 @@
             "type": "command",
             "command": "~/.claude/hooks/hedge-gate.sh",
             "timeout": 5
+          },
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/grounding-gate.sh",
+            "timeout": 5
           }
         ]
       }
@@ -161,6 +166,7 @@
   "tui": "default",
   "skipDangerousModePermissionPrompt": true,
   "skipWorkflowUsageWarning": true,
+  "agentPushNotifEnabled": true,
   "skipAutoPermissionPrompt": true,
   "feedbackSurveyState": {
     "lastShownTime": 1754147999307
